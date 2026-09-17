@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="gu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Partner Bill Kharcha</title>
+<style>
+*{box-sizing:border-box} body{margin:0;font-family:Arial,sans-serif;background:#f4f6f8;color:#202124}
+header{background:#1f3a5f;color:white;padding:18px 15px;text-align:center}
+header h1{margin:0;font-size:22px} header p{margin:6px 0 0;font-size:13px;opacity:.9}
+.wrap{max-width:900px;margin:auto;padding:14px}
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.card{background:white;border-radius:14px;padding:15px;box-shadow:0 2px 10px #0001}
+.card h2{margin:0 0 8px;font-size:18px}.total{font-size:25px;font-weight:bold}
+.karan .total{color:#1769aa}.rohit .total{color:#7b3fb5}
+.form{background:white;border-radius:14px;padding:15px;box-shadow:0 2px 10px #0001;margin-bottom:14px}
+.form h3{margin:0 0 12px}.row{display:grid;grid-template-columns:150px 1fr 150px;gap:10px}
+input{width:100%;padding:12px;border:1px solid #d5d9de;border-radius:9px;font-size:15px}
+button{border:0;border-radius:9px;padding:11px 15px;font-weight:bold;cursor:pointer}
+.add{background:#1f3a5f;color:white}.secondary{background:#e9edf2;color:#263238}
+.tabs{display:flex;gap:8px;margin-bottom:12px}.tab{flex:1;background:#e9edf2}.tab.active{background:#1f3a5f;color:white}
+.summary{background:white;border-radius:14px;padding:14px;box-shadow:0 2px 10px #0001;margin-bottom:14px}
+.summaryline{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #eee}.summaryline:last-child{border:0;font-weight:bold}
+.tablewrap{overflow:auto}.entry{display:grid;grid-template-columns:100px 1fr 120px 75px;gap:8px;align-items:center;padding:10px 0;border-bottom:1px solid #eee;font-size:14px}
+.amount{text-align:right;font-weight:bold}.del{padding:7px 8px;background:#ffe8e8;color:#b42318}
+.empty{text-align:center;color:#777;padding:25px}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+@media(max-width:650px){.cards{grid-template-columns:1fr}.row{grid-template-columns:1fr}.entry{grid-template-columns:75px 1fr 90px 55px;font-size:13px}.entry .amount{font-size:13px}}
+</style>
+</head>
+<body>
+<header><h1>Partner Bill Kharcha</h1><p>Karanbhai & Rohitbhai — date, party & amount automatic total</p></header>
+<div class="wrap">
+  <div class="cards">
+    <div class="card karan"><h2>👤 Karanbhai</h2><div class="total" id="karanTotal">₹0</div><small id="karanCount">0 bills</small></div>
+    <div class="card rohit"><h2>👤 Rohitbhai</h2><div class="total" id="rohitTotal">₹0</div><small id="rohitCount">0 bills</small></div>
+  </div>
+
+  <div class="summary">
+    <div class="summaryline"><span>Karanbhai Total</span><span id="sKaran">₹0</span></div>
+    <div class="summaryline"><span>Rohitbhai Total</span><span id="sRohit">₹0</span></div>
+    <div class="summaryline"><span>બન્નેનો Total</span><span id="grand">₹0</span></div>
+  </div>
+
+  <div class="form">
+    <h3 id="formTitle">➕ Karanbhai નો ખર્ચ ઉમેરો</h3>
+    <div class="tabs">
+      <button class="tab active" id="tabKaran" onclick="setPartner('Karanbhai')">Karanbhai</button>
+      <button class="tab" id="tabRohit" onclick="setPartner('Rohitbhai')">Rohitbhai</button>
+    </div>
+    <div class="row">
+      <input type="date" id="date">
+      <input type="text" id="party" placeholder="Party / Bill name (જેમ કે Ram, Mill, Stitching)">
+      <input type="number" id="amount" min="0" step="0.01" placeholder="Amount ₹">
+    </div>
+    <div class="actions">
+      <button class="add" onclick="addEntry()">+ Bill Add કરો</button>
+      <button class="secondary" onclick="exportCSV()">⬇️ Excel/CSV Export</button>
+      <button class="secondary" onclick="clearAll()">🗑️ બધો Data Clear</button>
+    </div>
+  </div>
+
+  <div class="form">
+    <h3>📊 Reports & Filters</h3>
+    <div class="row" style="grid-template-columns:1fr 1fr 1fr">
+      <input type="month" id="monthFilter" onchange="render()">
+      <input type="text" id="partyFilter" oninput="render()" placeholder="Party name filter">
+      <button class="secondary" onclick="clearFilters()">Clear Filters</button>
+    </div>
+    <div class="actions">
+      <button class="secondary" onclick="exportMonthlyCSV()">⬇️ Filtered Excel/CSV</button>
+      <button class="secondary" onclick="printReport()">🖨️ PDF / Print Report</button>
+    </div>
+  </div>
+
+  <div class="summary" id="partySummary">
+    <h3 style="margin:0 0 10px">🏷️ Party-wise Total</h3>
+    <div id="partyRows"></div>
+  </div>
+
+  <div class="form">
+    <h3>📋 ખર્ચની વિગતો</h3>
+    <div class="tabs">
+      <button class="tab active" id="listKaran" onclick="showList('Karanbhai')">Karanbhai List</button>
+      <button class="tab" id="listRohit" onclick="showList('Rohitbhai')">Rohitbhai List</button>
+    </div>
+    <div class="tablewrap" id="entries"></div>
+  </div>
+</div>
+
+<script>
+let data = JSON.parse(localStorage.getItem('partnerBills') || '[]');
+let partner='Karanbhai', listPartner='Karanbhai';
+
+function money(n){return '₹'+Number(n||0).toLocaleString('en-IN',{maximumFractionDigits:2})}
+function save(){localStorage.setItem('partnerBills',JSON.stringify(data));render()}
+
+function clearFilters(){
+  document.getElementById('monthFilter').value='';
+  document.getElementById('partyFilter').value='';
+  render();
+}
+function exportMonthlyCSV(){
+  const arr=getFilteredData().sort((a,b)=>a.date.localeCompare(b.date));
+  let csv='Partner,Date,Party,Amount\n'+arr.map(x=>`${x.partner},${x.date},"${x.party.replace(/"/g,'""')}",${x.amount}`).join('\n');
+  let blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}), a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);a.download='Partner_Bill_Filtered_Report.csv';a.click();
+}
+function printReport(){
+  const arr=getFilteredData().sort((a,b)=>a.date.localeCompare(b.date));
+  const title='Partner Bill Kharcha Report';
+  const kt=arr.filter(x=>x.partner==='Karanbhai').reduce((a,x)=>a+x.amount,0);
+  const rt=arr.filter(x=>x.partner==='Rohitbhai').reduce((a,x)=>a+x.amount,0);
+  const rows=arr.map(x=>`<tr><td>${formatDate(x.date)}</td><td>${x.partner}</td><td>${escapeHtml(x.party)}</td><td style="text-align:right">${money(x.amount)}</td></tr>`).join('');
+  const w=window.open('','_blank');
+  w.document.write(`<html><head><title>${title}</title><style>body{font-family:Arial;padding:25px}h1{font-size:22px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ccc;padding:8px}th{background:#eee}.tot{margin:12px 0;font-weight:bold}</style></head><body><h1>${title}</h1><div class="tot">Karanbhai: ${money(kt)} &nbsp;&nbsp; Rohitbhai: ${money(rt)} &nbsp;&nbsp; Grand Total: ${money(kt+rt)}</div><table><thead><tr><th>Date</th><th>Partner</th><th>Party</th><th>Amount</th></tr></thead><tbody>${rows}</tbody></table><script>window.onload=()=>window.print()<\/script></body></html>`);
+  w.document.close();
+}
+function setToday(){document.getElementById('date').value=new Date().toISOString().slice(0,10)}
+function setPartner(p){
+  partner=p;
+  document.getElementById('formTitle').textContent='➕ '+p+' નો ખર્ચ ઉમેરો';
+  document.getElementById('tabKaran').classList.toggle('active',p==='Karanbhai');
+  document.getElementById('tabRohit').classList.toggle('active',p==='Rohitbhai');
+}
+function addEntry(){
+  const date=document.getElementById('date').value, party=document.getElementById('party').value.trim(), amount=Number(document.getElementById('amount').value);
+  if(!date || !party || !amount || amount<0){alert('Date, Party અને Amount ભરો.');return}
+  data.push({id:Date.now()+Math.random(),partner,date,party,amount});
+  document.getElementById('party').value='';document.getElementById('amount').value='';
+  save();
+}
+function del(id){if(confirm('આ entry delete કરવી છે?')){data=data.filter(x=>x.id!==id);save()}}
+function showList(p){
+  listPartner=p;
+  document.getElementById('listKaran').classList.toggle('active',p==='Karanbhai');
+  document.getElementById('listRohit').classList.toggle('active',p==='Rohitbhai');
+  render();
+}
+function getFilteredData(){
+  const month=document.getElementById('monthFilter').value;
+  const pf=document.getElementById('partyFilter').value.trim().toLowerCase();
+  return data.filter(x=>{
+    const okMonth=!month || x.date.startsWith(month);
+    const okParty=!pf || x.party.toLowerCase().includes(pf);
+    return okMonth && okParty;
+  });
+}
+function render(){
+  let kt=data.filter(x=>x.partner==='Karanbhai').reduce((a,x)=>a+x.amount,0);
+  let rt=data.filter(x=>x.partner==='Rohitbhai').reduce((a,x)=>a+x.amount,0);
+  document.getElementById('karanTotal').textContent=money(kt);
+  document.getElementById('rohitTotal').textContent=money(rt);
+  document.getElementById('sKaran').textContent=money(kt);
+  document.getElementById('sRohit').textContent=money(rt);
+  document.getElementById('grand').textContent=money(kt+rt);
+  document.getElementById('karanCount').textContent=data.filter(x=>x.partner==='Karanbhai').length+' bills';
+  document.getElementById('rohitCount').textContent=data.filter(x=>x.partner==='Rohitbhai').length+' bills';
+
+  let arr=getFilteredData().filter(x=>x.partner===listPartner).sort((a,b)=>a.date.localeCompare(b.date));
+  const box=document.getElementById('entries');
+  if(!arr.length){box.innerHTML='<div class="empty">આ filter પ્રમાણે કોઈ bill નથી.</div>';}
+  else {
+    box.innerHTML='<div class="entry" style="font-weight:bold"><div>Date</div><div>Party</div><div class="amount">Amount</div><div></div></div>'+
+      arr.map(x=>`<div class="entry"><div>${formatDate(x.date)}</div><div>${escapeHtml(x.party)}</div><div class="amount">${money(x.amount)}</div><button class="del" onclick="del(${x.id})">Delete</button></div>`).join('')+
+      `<div class="entry" style="font-weight:bold;border:0"><div></div><div>Total</div><div class="amount">${money(arr.reduce((a,x)=>a+x.amount,0))}</div><div></div></div>`;
+  }
+
+  // Party-wise report for the current filters.
+  const filtered=getFilteredData();
+  const map={};
+  filtered.forEach(x=>{
+    const key=x.party.trim() || 'Unknown';
+    if(!map[key]) map[key]={Karanbhai:0,Rohitbhai:0,total:0};
+    map[key][x.partner]+=x.amount; map[key].total+=x.amount;
+  });
+  const rows=Object.entries(map).sort((a,b)=>b[1].total-a[1].total);
+  document.getElementById('partyRows').innerHTML=rows.length
+    ? rows.map(([name,v])=>`<div class="summaryline"><span>${escapeHtml(name)}</span><span>K: ${money(v.Karanbhai)} &nbsp; R: ${money(v.Rohitbhai)} &nbsp; <b>${money(v.total)}</b></span></div>`).join('')
+    : '<div class="empty">Party-wise data નથી.</div>';
+}
+function formatDate(s){let [y,m,d]=s.split('-');return d+'-'+m+'-'+y}
+function escapeHtml(s){return s.replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+function exportCSV(){
+  let csv='Partner,Date,Party,Amount\\n'+data.map(x=>`${x.partner},${x.date},"${x.party.replace(/"/g,'""')}",${x.amount}`).join('\\n');
+  let blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}), a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);a.download='Partner_Bill_Kharcha.csv';a.click();
+}
+function clearAll(){if(confirm('બધો data permanently clear કરવો છે?')){data=[];save()}}
+setToday();render();
+</script>
+</body>
+</html>
